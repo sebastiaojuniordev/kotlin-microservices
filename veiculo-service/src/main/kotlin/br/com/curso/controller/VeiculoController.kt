@@ -15,7 +15,7 @@ class VeiculoController(
         return HttpResponse.created(veiculoService.create(veiculo));
     }
 
-    @Get("/{id")
+    @Get("/{id}")
     fun findById(@PathVariable id: Long): HttpResponse<Veiculo> {
         return HttpResponse.ok(veiculoService.findById(id))
     }
