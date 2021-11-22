@@ -1,0 +1,5 @@
+micronaut:
+  application:
+    name: lojaService
+  server:
+    port: 8081
