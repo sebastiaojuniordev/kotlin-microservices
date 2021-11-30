@@ -1,0 +1,124 @@
+version: '3.8'
+
+networks:
+  ms-network:
+    driver:
+      bridge
+      
+services:
+  postgres:
+    container_name: postgres-db
+    image: postgres:latest
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - 5432:5432
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - ms-network
+
+  mongodb:
+    container_name: mongo-db
+    image: mongo
+    restart: always
+    ports:
+      - 27017:27017
+    networks:
+      - ms-network
+
+  redis:
+    container_name: ms-redis
+    image: redis
+    ports:
+      - 6379:6379
+    networks:
+      - ms-network 
+
+  zookeeper:
+    container_name: zookeeper
+    image: confluentinc/cp-zookeeper:latest
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    networks:
+      - ms-network 
+  
+  kafka:
+    container_name: kafka-broker
+    image: confluentinc/cp-kafka:latest
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka-broker:29092,PLAINTEXT_HOST://kafka-broker:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    depends_on:
+      - zookeeper
+    ports:
+      - 9092:9092
+      - 29092:29092
+    networks:
+      - ms-network 
+
+  consul:
+    container_name: consul
+    image: consul:latest
+    command: agent -server -dev -log-level error -bind 0.0.0.0 -client 0.0.0.0
+    ports:
+      - 8500:8500
+    networks:
+      - ms-network
+  
+  api-gateway:
+    container_name: ms-api-gateway
+    image: api-gateway:latest
+    environment:
+      CONSUL_HOST: consul
+    build:
+      context: ./api-gateway
+    ports:
+      - 9090:9090
+    networks:
+      - ms-network  
+      
+  veiculo-service:
+    image: veiculo-service:latest
+    environment:
+      CONSUL_HOST: consul
+      POSTGRES_HOST: postgres-db
+    depends_on:
+      - postgres
+    build:
+      context: ./veiculo-service
+    networks:
+      - ms-network
+      
+  loja-service:
+    image: loja-service:latest
+    environment:
+      CONSUL_HOST: consul
+      KAFKA_HOST: kafka-broker
+      REDIS_HOST: ms-redis
+    depends_on:
+      - kafka
+    build:
+      context: ./loja-service
+    networks:
+      - ms-network
+      
+  relatorio-service:
+    image: relatorio-service:latest
+    environment:
+      CONSUL_HOST: consul
+      KAFKA_HOST: kafka-broker
+      MONGODB_HOST: mongo-db
+    depends_on:
+      - kafka
+      - mongodb
+    build:
+      context: ./relatorio-service
+    networks:
+      - ms-network
