@@ -1,0 +1,18 @@
+micronaut:
+  application:
+    name: relatorioService
+  server:
+    port: -1
+
+kafka:
+  bootstrap:
+    servers: ${KAFKA_HOST:localhost}:${KAFKA_PORT:9092}
+
+mongodb:
+  uri: mongodb://${MONGODB_HOST:localhost}:${MONGODB_PORT:27017}/vendas
+
+consul:
+  client:
+    registration:
+      enabled: true
+    defaultZone: ${CONSUL_HOST:localhost}:${CONSUL_PORT:8500}
